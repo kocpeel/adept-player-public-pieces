@@ -23,7 +23,22 @@ export async function GET(
     const ext = path.extname(filePath).toLowerCase();
     let contentType = 'application/octet-stream';
     
-    if (ext === '.mp4') {
+    // Obsługa obrazów (dla maili - muszą być inline)
+    if (ext === '.png') {
+      contentType = 'image/png';
+    } else if (ext === '.jpg' || ext === '.jpeg') {
+      contentType = 'image/jpeg';
+    } else if (ext === '.gif') {
+      contentType = 'image/gif';
+    } else if (ext === '.webp') {
+      contentType = 'image/webp';
+    } else if (ext === '.svg') {
+      contentType = 'image/svg+xml';
+    } else if (ext === '.ico') {
+      contentType = 'image/x-icon';
+    }
+    // Obsługa audio/wideo
+    else if (ext === '.mp4') {
       contentType = 'video/mp4';
     } else if (ext === '.mp3') {
       contentType = 'audio/mpeg';
@@ -31,15 +46,24 @@ export async function GET(
       contentType = 'video/webm';
     }
 
+    // Przygotuj nagłówki
+    const headers: Record<string, string> = {
+      'Content-Type': contentType,
+      'Content-Length': fileStat.size.toString(),
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET',
+    };
+
+    // Dla obrazów ustaw Content-Disposition: inline (aby działały w mailach)
+    // Dla innych plików nie ustawiamy Content-Disposition, co oznacza inline domyślnie
+    if (contentType.startsWith('image/')) {
+      headers['Content-Disposition'] = 'inline';
+    }
+
     // Zwróć plik z odpowiednimi nagłówkami (CORS dla użycia na innych stronach)
     return new NextResponse(fileBuffer, {
-      headers: {
-        'Content-Type': contentType,
-        'Content-Length': fileStat.size.toString(),
-        'Cache-Control': 'public, max-age=31536000, immutable',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET',
-      },
+      headers,
     });
   } catch (error) {
     console.error('Error serving asset:', error);
